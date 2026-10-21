@@ -65,11 +65,18 @@ def test_login_use_case_handles_success_and_all_generic_failures() -> None:
 
 
 def test_login_and_authenticated_me_end_to_end() -> None:
+    from unittest.mock import MagicMock
+    from app.presentation.api.dependencies import get_session
+
     user = User(1, 10, "user@example.com", UserRole.EMPLOYEE, 7, None, UserStatus.ACTIVE)
     users = FakeUsers(user, PasswordHasher().hash("correct-password"))
+    mock_session = MagicMock()
+    mock_session.scalar.return_value = None
+    mock_session.execute.return_value.mappings.return_value.one_or_none.return_value = None
+    app.dependency_overrides[get_session] = lambda: mock_session
     app.dependency_overrides[get_user_repository] = lambda: users
     app.dependency_overrides[get_token_service] = lambda: TokenService("test-secret", 30)
-    client = TestClient(app, client=("198.51.100.11", 50000))
+    client = TestClient(app)
     login = client.post("/api/v1/auth/login", json={"email": user.email, "password": "correct-password"})
     assert login.status_code == 200
     token = login.json()["access_token"]
@@ -83,11 +90,14 @@ def test_login_and_authenticated_me_end_to_end() -> None:
 
 
 def test_login_failures_are_generic_and_rate_limited() -> None:
+    from app.infrastructure.security.rate_limiter import InMemoryRateLimiter
+
     user = User(1, 10, "user@example.com", UserRole.EMPLOYEE, None, None, UserStatus.ACTIVE)
     users = FakeUsers(user, PasswordHasher().hash("correct-password"))
     app.dependency_overrides[get_user_repository] = lambda: users
     app.dependency_overrides[get_token_service] = lambda: TokenService("test-secret", 30)
-    client = TestClient(app, client=("198.51.100.12", 50000))
+    app.state.rate_limiter = InMemoryRateLimiter(limit=5)
+    client = TestClient(app)
     for payload in ({"email": user.email, "password": "wrong"}, {"email": "none@example.com", "password": "wrong"}):
         response = client.post("/api/v1/auth/login", json=payload)
         assert response.status_code == 401

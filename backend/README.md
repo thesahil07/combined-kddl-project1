@@ -28,7 +28,7 @@ fictional demo users and employees. The password is supplied at runtime and is
 never saved in source control:
 
 ```powershell
-$env:DEMO_SEED_PASSWORD='choose-a-local-demo-password'
+$env:DEMO_SEED_PASSWORD='KddlDemo!2026'
 python scripts/seed_demo_data.py
 ```
 

@@ -978,6 +978,7 @@ function AssessmentTable({
           />
           <AssessmentProgress
             status={member.behaviour_manager_status}
+            canAssess={member.behaviour_employee_status === "COMPLETED"}
             onAssess={() => onAssess(member, "success-behaviours")}
           />
           <AssessmentProgress
@@ -986,6 +987,7 @@ function AssessmentTable({
           />
           <AssessmentProgress
             status={member.functional_manager_status}
+            canAssess={member.functional_employee_status === "COMPLETED"}
             onAssess={() => onAssess(member, "functional-skills")}
           />
           <div className="assessment-report-actions">

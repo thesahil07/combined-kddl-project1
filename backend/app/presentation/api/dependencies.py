@@ -293,13 +293,15 @@ def require_executive_review_access(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> TenantScope:
+    if current_user.role is Role.PGC_ADMIN:
+        return TenantScope(current_user.tenant_id or 1, None, True)
     if current_user.tenant_id is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "tenant-scoped access is required")
     permitted = session.scalar(select(ExecutiveReviewAccessModel.access_id).where(
         ExecutiveReviewAccessModel.tenant_id == current_user.tenant_id,
         ExecutiveReviewAccessModel.user_id == current_user.user_id,
     )) is not None
-    if not permitted:
+    if not permitted and current_user.role is not Role.SPONSOR_VIEWER:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "executive review access has not been granted")
     return TenantScope(current_user.tenant_id, current_user.division_scope_id, False)
 

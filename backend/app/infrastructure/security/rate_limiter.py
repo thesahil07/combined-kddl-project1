@@ -24,7 +24,7 @@ class InMemoryRateLimiter:
     each process has its own counters. Production uses ``RedisRateLimiter``.
     """
 
-    def __init__(self, limit: int = 5, window_seconds: int = 60) -> None:
+    def __init__(self, limit: int = 60, window_seconds: int = 60) -> None:
         self._limit = limit
         self._window = window_seconds
         self._requests: dict[str, tuple[int, float]] = {}

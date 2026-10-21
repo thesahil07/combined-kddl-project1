@@ -35,10 +35,10 @@ app.add_middleware(LoginRateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(settings.frontend_origins),
+    allow_origins=["*"] if settings.env == "local" else list(settings.frontend_origins),
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT"],
-    allow_headers=["Authorization", "Content-Type", "X-Target-Tenant-ID"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 app.include_router(v1_router, prefix="/api/v1")
 

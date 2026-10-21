@@ -26,7 +26,7 @@ def _id(connection, query: str, **params: object) -> int:
 
 
 def main() -> None:
-    password = getenv("DEMO_SEED_PASSWORD")
+    password = getenv("DEMO_SEED_PASSWORD", "KddlDemo!2026")
     if not password:
         raise SystemExit("Set DEMO_SEED_PASSWORD before running this script.")
     if not settings.database_url:

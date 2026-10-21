@@ -11,6 +11,7 @@ router = APIRouter(tags=["executive-review"])
 @router.get("/dashboard")
 def dashboard(
     division_id: int | None = Query(default=None, ge=1),
+    function_name: str | None = Query(default=None),
     scope: TenantScope = Depends(require_executive_review_access),
     use_case: GetExecutiveReviewUseCase = Depends(get_executive_review_use_case),
 ) -> dict[str, object]:
@@ -18,4 +19,5 @@ def dashboard(
         return {}
     if scope.division_scope_id is not None:
         division_id = scope.division_scope_id
-    return use_case.execute(scope.tenant_id, division_id)
+    return use_case.execute(scope.tenant_id, division_id, function_name)
+
