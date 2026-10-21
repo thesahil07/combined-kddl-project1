@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kddl-talent-platform"
+version = "0.1.0"
+description = "KDDL Dials Talent Transformation Platform API"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.115.12",
+  "uvicorn[standard]==0.34.0",
+  "sqlalchemy==2.0.38",
+  "pydantic>=2,<3",
+  "alembic==1.14.1",
+  "PyJWT==2.10.1",
+  "passlib[argon2]==1.7.4",
+  "python-dotenv==1.0.1",
+  "pymysql==1.1.1",
+  "redis==5.2.1",
+  "python-multipart==0.0.20",
+  "cryptography==44.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.3.4",
+  "pytest-cov==6.0.0",
+  "httpx==0.28.1",
+  "mypy==1.14.1",
+  "ruff==0.9.6",
+  "black==25.1.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=app --cov-report=term-missing --cov-fail-under=50"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["app"]

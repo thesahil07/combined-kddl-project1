@@ -1,0 +1,1 @@
+"""KDDL Talent Transformation Platform."""

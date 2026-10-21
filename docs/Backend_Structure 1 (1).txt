@@ -1,0 +1,107 @@
+
+Clean Architecture (Layered)----------------------------(Use Case / Service Base Pattern)
+
+
+```text
+backend/
+├── app/
+│   ├── main.py                  # Application entry point (initializes FastAPI/Express, Middlewares, CORS)
+│   ├── config.py                # Configuration manager (loads .env, validates JWT/DB secrets, security keys)
+│   │
+│   ├── domain/                  # LAYER 1: Core Domain (Pure Business Logic - Zero External Dependencies)
+│   │   ├── entities/            # Domain models (e.g., User, Dimension, Score, Session)
+│   │   ├── exceptions/          # Business rule validation errors (e.g., SessionAlreadyBookedException)
+│   │   └── interfaces/          # Repository contracts (Abstract interfaces for DB repositories, email, PDF API)
+│   │
+│   ├── application/             # LAYER 2: Use Cases (Application Workflows & Core Orchestration)
+│   │   ├── use_cases/           # Core use case handlers (e.g., CalculateScore, RequestSession, GetReport)
+│   │   ├── dtos/                # Data Transfer Objects & Request Validators (Input schemas for APIs)
+│   │   └── services/            # Application services (e.g., AuthManager, NotificationDispatcher)
+│   │
+│   ├── infrastructure/          # LAYER 3: Infrastructure (Adapters, Database engines, external integrations)
+│   │   ├── database/            # SQLAlchemy/ORM context, migrations, connection pool settings
+│   │   ├── repositories/        # SQL implementations of Domain Interfaces (CRUD data-access logic)
+│   │   ├── security/            # Password hashing (Argon2/bcrypt), JWT token generators/decoders
+│   │   └── external_services/   # Implementations of third-party clients (SMTP email, PDF writer, AI text engine)
+│   │
+│   └── presentation/            # LAYER 4: Presentation/API (Endpoints, routes, HTTP protocols, controllers)
+│       ├── api/                 # Controllers & Router definitions
+│       │   ├── v1/              # Versioned API routes (auth.py, assessments.py, sessions.py)
+│       │   └── dependencies.py  # Dependency Injection container (resolves DB sessions, extracts current_user)
+│       └── middlewares/         # HTTP Security Interceptors (CORS, Rate Limiter, Security Headers)
+│
+├── tests/                       # Unit, integration, and security tests (VAPT test scripts)
+├── .env.example                 # Template for environment variables (credentials, API keys, JWT secret)
+├── .gitignore                   # Excludes node_modules, virtualenv, secrets, logs from Git
+├── requirements.txt             # Package dependencies (FastAPI, SQLAlchemy, Pydantic, Passlib, PyJWT)
+└── README.md                    # Setup and local execution instructions
+```
+
+
+
+## 2. Layer-by-Layer Architectural Separation
+
+### Layer 1: Domain (The Core)
+ Responsibility: Holds the absolute core business models and rules. It knows nothing about databases, routers, or internet protocols.
+ Security Role: Enforces core domain validations (e.g., checking if a user rating is strictly between 1 and 5, or if a user can complete an assessment). Doing validation here prevents corrupted logic from executing, even if front-end validations are bypassed.
+
+### Layer 2: Application (Use Cases)
+ Responsibility: Orchestrates how the application processes commands. It receives data from the presentation layer, uses domain entities, and saves them through interfaces.
+ Security Role: Converts raw input into strongly-typed DTOs (Data Transfer Objects). In this layer, inputs are strictly parsed (e.g., removing HTML tags to prevent XSS (Cross-Site Scripting)) before processing.
+
+### Layer 3: Infrastructure (Adapters)
+ Responsibility: Handles actual data persistence, cryptography, and network communication.
+ Security Role: 
+   Implements SQL repositories using parameterized queries or ORM (Object-Relational Mapping) to prevent SQL Injection.
+   Contains the `security/` module where hashing algorithms (like `bcrypt` or `Argon2ID`) process user passwords, and cryptographically signed JWT tokens are issued.
+
+### Layer 4: Presentation / Web API
+ Responsibility: The outer boundary of the backend. It maps HTTP requests to appropriate use cases and handles routing.
+ Security Role:
+   Middlewares: Enforces security headers (HSTS, CSP, XSS-Protection, Frame-Options to prevent Clickjacking).
+   Rate Limiting: Throttles API requests to prevent DDoS and brute-force password guessing.
+   CORS Policies: Blocks malicious third-party websites from making cross-origin requests.
+
+---
+
+## 3. How Security is Enforced in the Structure (VAPT Safeguards)
+
+| Threat | Target Area in Folder Structure | Mitigation Strategy |
+| :--- | :--- | :--- |
+| SQL Injection | `infrastructure/repositories/` | All queries are written using ORM models or parameterized prepared SQL queries; direct string concatenation is banned. |
+| Cross-Site Scripting (XSS) | `application/dtos/` | Use Case DTO inputs (using validation libraries like Pydantic/Zod) strip HTML/JS tags from strings before they are processed. |
+| Brute Force Attacks | `presentation/middlewares/` | Rate-limiting middleware slows down/blocks repeated requests on authentication routes (e.g., max 5 login requests per minute). |
+| Sensitive Data Exposure | `app/config.py` & `.env` | No credentials or private keys are hardcoded in the codebase. All secrets are loaded dynamically from environment variables. |
+| Broken Object Level Auth (BOLA) | `presentation/api/dependencies.py` | Dependency injection validates JWT token signatures and checks if the requesting `user_id` matches the target resource owner on every request. |
+| Clickjacking | `presentation/middlewares/` | Security middleware injects headers like `X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'none'`. |
+
+
+## 4. Access Rules Summary
+ Domain (`domain/`): 0 imports (Independent). Cannot access other layers.
+ Application (`application/`): Can access `domain/`. Cannot access `infrastructure` or `presentation`.
+ Infrastructure (`infrastructure/`): Can access `domain/` and `application/` (to implement repository contracts).
+ Presentation (`presentation/`): Can access `application/` & `domain/`. Can import `infrastructure/` ONLY inside `dependencies.py` for startup dependency wiring. Route controllers (like `sessions.py`) are strictly prohibited from importing from infrastructure directly.
+
+
+
+## 5. API Code Flow Summary (How to Write an API)
+API path: `Route -> DTO -> UseCase -> Entity -> Interface -> SQL Repository`
+1. Domain Entity (`domain/entities/`): Pure Python class with business validations.
+2. Domain Interface (`domain/interfaces/`): Abstract class specifying DB functions.
+3. Application DTO (`application/dtos/`): Pydantic validation of request/response payload.
+4. Application Use Case (`application/use_cases/`): Workflow coordinator.
+5. Infrastructure Repository (`infrastructure/repositories/`): Concrete SQL implementations of the Interface.
+6. Presentation DI (`presentation/api/dependencies.py`): Injects database session and ties repository to the UseCase.
+7. Presentation Route (`presentation/api/v1/`): FastAPI endpoint invoking the UseCase.
+
+
+## 6. Global Middlewares Summary
+ CORS Middleware (`app/main.py`): Whitelists front-end origins allowed to call APIs.
+ Rate Limiter (`presentation/middlewares/`): Prevents DDoS / Brute Force by limiting requests per IP.
+ Auth & BOLA check (`presentation/api/dependencies.py`): Decodes JWT tokens and verifies user scopes dynamically.
+
+
+
+
+
+
