@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: kddl-talent-platform
+Version: 0.1.0
+Summary: KDDL Dials Talent Transformation Platform API
+Requires-Python: >=3.11
+Requires-Dist: fastapi==0.115.12
+Requires-Dist: uvicorn[standard]==0.34.0
+Requires-Dist: sqlalchemy==2.0.38
+Requires-Dist: pydantic<3,>=2
+Requires-Dist: alembic==1.14.1
+Requires-Dist: PyJWT==2.10.1
+Requires-Dist: passlib[argon2]==1.7.4
+Requires-Dist: python-dotenv==1.0.1
+Requires-Dist: pymysql==1.1.1
+Requires-Dist: redis==5.2.1
+Requires-Dist: python-multipart==0.0.20
+Requires-Dist: cryptography==44.0.2
+Provides-Extra: dev
+Requires-Dist: pytest==8.3.4; extra == "dev"
+Requires-Dist: pytest-cov==6.0.0; extra == "dev"
+Requires-Dist: httpx==0.28.1; extra == "dev"
+Requires-Dist: mypy==1.14.1; extra == "dev"
+Requires-Dist: ruff==0.9.6; extra == "dev"
+Requires-Dist: black==25.1.0; extra == "dev"
