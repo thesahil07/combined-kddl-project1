@@ -244,6 +244,13 @@ def main() -> None:
         """), {"tenant_id": tenant_id, "manager_employee_id": nisha,
               "assigned_by_user_id": pgc_user_id})
 
+        skip_manager_user_id = _id(connection, "SELECT user_id FROM users WHERE email='skip.manager@demo.kddl.local'")
+        connection.execute(text("""
+            INSERT INTO admin_console_access (tenant_id, user_id, granted_by_user_id)
+            VALUES (:tenant_id, :user_id, :granted_by_user_id)
+            ON DUPLICATE KEY UPDATE tenant_id=tenant_id
+        """), {"tenant_id": tenant_id, "user_id": skip_manager_user_id, "granted_by_user_id": pgc_user_id})
+
     print("Seeded fictional demo data: 6 users, 8 employees, 2 divisions, and sample assessment matrices.")
 
 

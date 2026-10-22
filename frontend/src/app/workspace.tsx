@@ -1731,6 +1731,7 @@ function AdminConsoleWorkspace({ user, onSignOut, onClose }: { user: CurrentUser
   const [page, setPage] = useState(1);
   const [message, setMessage] = useState("");
   const [submittedAssessment, setSubmittedAssessment] = useState<SubmittedConsoleAssessment | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const token = sessionStorage.getItem("kddl_access_token") ?? "";
   async function load(division = divisionId, cycle = cycleId, requestedPage = page, name = employeeName) {
     const query = new URLSearchParams();
@@ -1755,12 +1756,79 @@ function AdminConsoleWorkspace({ user, onSignOut, onClose }: { user: CurrentUser
     if (!data) { setMessage("No submitted assessment is available for this employee in the selected cycle."); return; }
     setSubmittedAssessment(data);
   }
+  async function downloadExcel() {
+    try {
+      setIsExporting(true);
+      setMessage("");
+      const query = new URLSearchParams();
+      if (divisionId) query.set("division_id", divisionId);
+      if (cycleId) query.set("cycle_id", cycleId);
+      if (employeeName.trim()) query.set("employee_name", employeeName.trim());
+
+      const response = await fetch(`${apiUrl}/admin-console/export-excel?${query}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        let errorDetail = "Unable to download assessment report to Excel.";
+        try {
+          const errData = await response.json();
+          if (errData && errData.detail) {
+            errorDetail = typeof errData.detail === "string" ? errData.detail : JSON.stringify(errData.detail);
+          }
+        } catch {
+          // response is not JSON
+        }
+        throw new Error(errorDetail);
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition");
+      let filename = "KDDL_Assessment_Gaps_Report.xlsx";
+      if (disposition) {
+        const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+        if (match && match[1]) filename = match[1];
+      }
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : "Error downloading Excel file.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
   return <main className="manager-shell admin-console">
     <header className="manager-header"><div className="manager-brand"><img src={activeTenantBrand.logoUrl} alt="KDDL" /><span>Admin Console</span></div><div><span className="manager-user">{user.email}</span>{onClose && <button onClick={onClose}>Back to workspace</button>}<ChangePasswordAction onSignOut={onSignOut} /><button onClick={onSignOut}>Sign out</button></div></header>
     <section className="manager-hero"><p className="eyebrow">HR ASSESSMENT OVERSIGHT</p><h1>Assessment status,<br /><em>across every entity.</em></h1><p>Review employee and manager completion separately for Success Behaviour and Functional Skills, then focus on the reported gaps.</p></section>
     <section className="manager-content">
-      <div className="admin-filters"><label>Entity<select value={divisionId} onChange={(event) => { setDivisionId(event.target.value); load(event.target.value, cycleId, 1).catch((error) => setMessage(error.message)); }}><option value="">All entities</option>{report?.divisions.map((division) => <option key={division.division_id} value={division.division_id}>{division.name}</option>)}</select></label><label>Assessment cycle<select value={cycleId} onChange={(event) => { setCycleId(event.target.value); load(divisionId, event.target.value, 1).catch((error) => setMessage(error.message)); }}>{report?.cycles.map((cycle) => <option key={cycle.cycle_id} value={cycle.cycle_id}>{cycle.name}</option>)}</select></label><form className="employee-search" onSubmit={(event) => { event.preventDefault(); load(divisionId, cycleId, 1, employeeName).catch((error) => setMessage(error.message)); }}><label>Employee name<input value={employeeName} onChange={(event) => setEmployeeName(event.target.value)} placeholder="Search by employee name" /></label><button className="primary" type="submit">Search</button>{employeeName && <button className="text-action" type="button" onClick={() => { setEmployeeName(""); load(divisionId, cycleId, 1, "").catch((error) => setMessage(error.message)); }}>Clear</button>}</form></div>
-      {report && <div className="metric-grid admin-metrics"><article><b>{report.summary.employees}</b><span>Employees in scope</span></article><article><b>{report.summary.behaviour_self_pending + report.summary.functional_self_pending}</b><span>Self-assessment sections pending</span></article><article><b>{report.summary.behaviour_manager_pending + report.summary.functional_manager_pending}</b><span>Manager sections pending</span></article><article><b>{report.summary.behaviour_gaps + report.summary.functional_gaps}</b><span>Reported gap items</span></article></div>}
+      <div className="admin-filters">
+        <label>Entity<select value={divisionId} onChange={(event) => { setDivisionId(event.target.value); load(event.target.value, cycleId, 1).catch((error) => setMessage(error.message)); }}><option value="">All entities</option>{report?.divisions.map((division) => <option key={division.division_id} value={division.division_id}>{division.name}</option>)}</select></label>
+        <label>Assessment cycle<select value={cycleId} onChange={(event) => { setCycleId(event.target.value); load(divisionId, event.target.value, 1).catch((error) => setMessage(error.message)); }}>{report?.cycles.map((cycle) => <option key={cycle.cycle_id} value={cycle.cycle_id}>{cycle.name}</option>)}</select></label>
+        <form className="employee-search" onSubmit={(event) => { event.preventDefault(); load(divisionId, cycleId, 1, employeeName).catch((error) => setMessage(error.message)); }}>
+          <label>Employee name<input value={employeeName} onChange={(event) => setEmployeeName(event.target.value)} placeholder="Search by employee name" /></label>
+          <button className="primary" type="submit">Search</button>
+          {employeeName && <button className="text-action" type="button" onClick={() => { setEmployeeName(""); load(divisionId, cycleId, 1, "").catch((error) => setMessage(error.message)); }}>Clear</button>}
+        </form>
+        <button
+          type="button"
+          className="download-excel-btn"
+          onClick={downloadExcel}
+          disabled={isExporting}
+          title="Download complete assessment gaps report to Excel"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span>{isExporting ? "Downloading..." : "Download to Excel"}</span>
+        </button>
+      </div>
+      {report && <div className="metric-grid admin-metrics"><article><b>{report.summary.employees}</b><span>Employees in scope</span></article><article><b>{report.summary.self_pending_employees ?? (report.summary.behaviour_self_pending + report.summary.functional_self_pending)}</b><span>Self-assessments pending</span></article><article><b>{report.summary.manager_pending_employees ?? (report.summary.behaviour_manager_pending + report.summary.functional_manager_pending)}</b><span>Manager assessments pending</span></article><article><b>{report.summary.behaviour_gaps + report.summary.functional_gaps}</b><span>Reported gap items</span></article></div>}
       <div className="panel-header"><div><p className="eyebrow">CYCLE STATUS</p><h2>Manager assessment status</h2></div></div>
       {message && <p className="form-error">{message}</p>}
       {!report ? <p className="workspace-loading">Loading assessment report…</p> : <><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Entity / employee</th><th>Manager</th><th>Behaviour self</th><th>Behaviour manager</th><th>Functional self</th><th>Functional manager</th><th>Behaviour gaps</th><th>Functional gaps</th><th>Submitted assessment</th></tr></thead><tbody>{report.employees.map((employee) => <tr key={employee.employee_id}><td><b>{employee.full_name}</b><span>{employee.employee_code} · {employee.division_name}</span></td><td>{employee.manager_name ?? "Not assigned"}</td><td>{status(employee.behaviour_self_status)}</td><td>{status(employee.behaviour_manager_status)}</td><td>{status(employee.functional_self_status)}</td><td>{status(employee.functional_manager_status)}</td><td className={employee.behaviour_gaps > 0 ? "negative-gap" : ""}>{employee.behaviour_gaps}</td><td className={employee.functional_gaps > 0 ? "negative-gap" : ""}>{employee.functional_gaps}</td><td>{employee.behaviour_self_status === "COMPLETED" || employee.functional_self_status === "COMPLETED" ? <button className="text-action" onClick={() => viewSubmitted(employee.employee_id)}>View</button> : "—"}</td></tr>)}</tbody></table></div><AssessmentLegend includeStatuses /><div className="pagination"><span>Showing {report.employees.length ? (report.page - 1) * report.page_size + 1 : 0}–{Math.min(report.page * report.page_size, report.total_employees)} of {report.total_employees} employees</span><button disabled={report.page === 1} onClick={() => load(divisionId, cycleId, report.page - 1)}>Previous</button><button disabled={report.page * report.page_size >= report.total_employees} onClick={() => load(divisionId, cycleId, report.page + 1)}>Next</button></div></>}

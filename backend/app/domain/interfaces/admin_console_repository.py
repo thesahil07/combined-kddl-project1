@@ -12,3 +12,9 @@ class AdminConsoleRepository(ABC):
 
     @abstractmethod
     def get_submitted_assessment(self, tenant_id: int, employee_id: int, cycle_id: int) -> dict[str, object] | None: ...
+
+    @abstractmethod
+    def export_assessment_gaps_excel(
+        self, tenant_id: int, division_id: int | None = None, cycle_id: int | None = None,
+        employee_name: str | None = None,
+    ) -> tuple[bytes, str]: ...

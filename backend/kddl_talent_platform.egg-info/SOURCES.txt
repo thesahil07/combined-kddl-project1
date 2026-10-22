@@ -65,6 +65,7 @@ app/infrastructure/database/models/tenancy_identity.py
 app/infrastructure/database/repositories/__init__.py
 app/infrastructure/external_services/__init__.py
 app/infrastructure/external_services/ai_gateway.py
+app/infrastructure/external_services/graph_email_sender.py
 app/infrastructure/external_services/role_description_refiner.py
 app/infrastructure/external_services/smtp_email_sender.py
 app/infrastructure/repositories/__init__.py
@@ -103,6 +104,7 @@ kddl_talent_platform.egg-info/SOURCES.txt
 kddl_talent_platform.egg-info/dependency_links.txt
 kddl_talent_platform.egg-info/requires.txt
 kddl_talent_platform.egg-info/top_level.txt
+tests/test_admin_console_export.py
 tests/test_assessment_submission_notifier.py
 tests/test_auth.py
 tests/test_employee_workspace.py

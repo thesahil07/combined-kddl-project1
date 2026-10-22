@@ -15,6 +15,7 @@ Requires-Dist: pymysql==1.1.1
 Requires-Dist: redis==5.2.1
 Requires-Dist: python-multipart==0.0.20
 Requires-Dist: cryptography==44.0.2
+Requires-Dist: openpyxl==3.1.5
 Provides-Extra: dev
 Requires-Dist: pytest==8.3.4; extra == "dev"
 Requires-Dist: pytest-cov==6.0.0; extra == "dev"
