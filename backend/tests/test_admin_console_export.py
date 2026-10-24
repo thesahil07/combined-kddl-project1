@@ -29,8 +29,8 @@ class FakeAdminConsoleRepo(AdminConsoleRepository):
         from openpyxl import Workbook
 
         wb = Workbook()
-        ws_all = wb.active
-        ws_all.title = "All Assessment Gaps"
+        ws_sb = wb.active
+        ws_sb.title = "Success Behaviours"
 
         headers = [
             "Employee Name",
@@ -49,13 +49,13 @@ class FakeAdminConsoleRepo(AdminConsoleRepository):
             "Gap (MAL - DL)",
             "Gap Status",
         ]
-        ws_all.append(headers)
-
-        ws_sb = wb.create_sheet(title="Success Behaviours")
         ws_sb.append(headers)
 
         ws_fs = wb.create_sheet(title="Functional Skills")
         ws_fs.append(headers)
+
+        ws_status = wb.create_sheet(title="Assessment Status Summary")
+        ws_status.append(headers)
 
         sample_row = [
             "Aarav Sharma",
@@ -74,7 +74,6 @@ class FakeAdminConsoleRepo(AdminConsoleRepository):
             -2,
             "Negative Gap (-2)",
         ]
-        ws_all.append(sample_row)
         ws_sb.append(sample_row)
 
         buf = io.BytesIO()
@@ -104,11 +103,12 @@ def test_admin_console_export_excel_endpoint():
     # Verify openpyxl can read the returned workbook
     wb = openpyxl.load_workbook(io.BytesIO(response.content))
     sheet_names = wb.sheetnames
-    assert "All Assessment Gaps" in sheet_names
+    assert "All Assessment Gaps" not in sheet_names
     assert "Success Behaviours" in sheet_names
     assert "Functional Skills" in sheet_names
+    assert "Assessment Status Summary" in sheet_names
 
-    ws = wb["All Assessment Gaps"]
+    ws = wb["Success Behaviours"]
     row1 = [cell.value for cell in ws[1]]
     assert "Employee Name" in row1
     assert "Employee Code" in row1
@@ -121,3 +121,15 @@ def test_admin_console_export_excel_endpoint():
     assert "Self Assessment Level (SAL)" in row1
     assert "Manager Assessment Level (MAL)" in row1
     assert "Gap (MAL - DL)" in row1
+
+
+def test_admin_console_repository_query_filters_active_employees():
+    import inspect
+    from app.infrastructure.repositories.admin_console_repository_impl import SqlAlchemyAdminConsoleRepository
+
+    src_export = inspect.getsource(SqlAlchemyAdminConsoleRepository.export_assessment_gaps_excel)
+    assert "e.status='ACTIVE'" in src_export or "e.status = 'ACTIVE'" in src_export
+
+    src_report = inspect.getsource(SqlAlchemyAdminConsoleRepository.get_assessment_report)
+    assert "e.status='ACTIVE'" in src_report or "e.status = 'ACTIVE'" in src_report
+
